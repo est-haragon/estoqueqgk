@@ -1,1503 +1,377 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QGK — Controle de Estoque</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
-
-  :root {
-    --bg: #0a0c0f;
-    --surface: #111418;
-    --surface2: #181c22;
-    --border: #1e2530;
-    --accent: #e8b400;
-    --accent2: #ff6b00;
-    --text: #c8d0dc;
-    --text-dim: #5a6478;
-    --text-bright: #eef2f8;
-    --green: #00c97a;
-    --red: #ff3b3b;
-    --blue: #3b8bff;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px;
-    min-height: 100vh;
-  }
-
-  /* ── HEADER ── */
-  header {
-    background: var(--surface);
-    border-bottom: 2px solid var(--accent);
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 56px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .logo {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 4px;
-    color: var(--accent);
-    text-transform: uppercase;
-  }
-  .logo span { color: var(--text-dim); font-weight: 400; font-size: 12px; letter-spacing: 2px; margin-left: 8px; }
-  .header-stats { display: flex; gap: 24px; }
-  .stat { text-align: center; }
-  .stat-val { font-size: 20px; font-weight: 700; color: var(--accent); font-family: 'Share Tech Mono', monospace; }
-  .stat-lbl { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
-
-  /* ── TABS ── */
-  .tabs {
-    display: flex;
-    gap: 2px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-  }
-  .tab {
-    padding: 12px 20px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border-bottom: 3px solid transparent;
-    transition: all .2s;
-    user-select: none;
-  }
-  .tab:hover { color: var(--text); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* ── MAIN ── */
-  .page { display: none; padding: 24px; max-width: 1400px; margin: 0 auto; }
-  .page.active { display: block; }
-
-  /* ── SEARCH BAR ── */
-  .search-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .search-wrap {
-    flex: 1;
-    min-width: 240px;
-    position: relative;
-  }
-  .search-wrap input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-bright);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px;
-    padding: 10px 16px 10px 40px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  .search-wrap input:focus { border-color: var(--accent); }
-  .search-wrap::before {
-    content: '⌕';
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-dim);
-    font-size: 18px;
-    pointer-events: none;
-  }
-
-  /* ── BUTTONS ── */
-  .btn {
-    padding: 10px 18px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    transition: all .15s;
-  }
-  .btn-accent { background: var(--accent); color: #000; }
-  .btn-accent:hover { background: #ffc200; }
-  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-green { background: var(--green); color: #000; }
-  .btn-green:hover { filter: brightness(1.1); }
-  .btn-red { background: var(--red); color: #fff; }
-  .btn-red:hover { filter: brightness(1.1); }
-  .btn-blue { background: var(--blue); color: #fff; }
-  .btn-blue:hover { filter: brightness(1.1); }
-  .btn-sm { padding: 6px 12px; font-size: 11px; }
-
-  /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
-  table { width: 100%; border-collapse: collapse; }
-  thead tr { background: var(--surface2); }
-  th {
-    padding: 12px 14px;
-    text-align: left;
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    white-space: nowrap;
-    border-bottom: 1px solid var(--border);
-  }
-  tbody tr {
-    border-bottom: 1px solid var(--border);
-    transition: background .1s;
-    cursor: pointer;
-  }
-  tbody tr:hover { background: var(--surface2); }
-  tbody tr:last-child { border-bottom: none; }
-  td {
-    padding: 10px 14px;
-    font-size: 14px;
-    vertical-align: middle;
-  }
-  .sku-cell {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
-    white-space: nowrap;
-  }
-  .qty-cell { font-family: 'Share Tech Mono', monospace; font-size: 16px; font-weight: 700; }
-  .qty-ok { color: var(--green); }
-  .qty-low { color: var(--accent2); }
-  .qty-zero { color: var(--red); }
-  .name-cell { max-width: 340px; font-weight: 500; color: var(--text-bright); }
-  .actions-cell { display: flex; gap: 6px; align-items: center; }
-
-  /* ── QTY BADGE ── */
-  .qty-badge {
-    display: inline-block;
-    min-width: 40px;
-    text-align: center;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-family: 'Share Tech Mono', monospace;
-    font-weight: 700;
-    font-size: 15px;
-  }
-  .badge-ok { background: rgba(0,201,122,.15); color: var(--green); }
-  .badge-low { background: rgba(255,107,0,.15); color: var(--accent2); }
-  .badge-zero { background: rgba(255,59,59,.15); color: var(--red); }
-
-  /* ── MODAL ── */
-  .modal-bg {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.75);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-bg.open { display: flex; }
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--accent);
-    border-radius: 10px;
-    padding: 28px;
-    width: min(520px, 95vw);
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-  .modal-title {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 20px;
-  }
-  .form-row { margin-bottom: 14px; }
-  .form-row label {
-    display: block;
-    font-size: 11px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 5px;
-  }
-  .form-row input, .form-row select {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-bright);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px;
-    padding: 10px 14px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  .form-row input:focus, .form-row select:focus { border-color: var(--accent); }
-  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-
-  /* ── BARCODE MODAL ── */
-  .bc-wrap {
-    background: #fff;
-    border-radius: 8px;
-    padding: 16px;
-    text-align: center;
-    margin: 16px 0;
-  }
-  .bc-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: #333;
-    margin-top: 8px;
-    word-break: break-all;
-    text-transform: uppercase;
-  }
-  .bc-sku {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 13px;
-    color: #555;
-  }
-
-  /* ── SCANNER TAB ── */
-  .scanner-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 28px;
-    max-width: 520px;
-    margin: 0 auto;
-  }
-  .scanner-title {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-  .scanner-sub {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 24px;
-    line-height: 1.5;
-  }
-  .scan-input-wrap {
-    position: relative;
-    margin-bottom: 16px;
-  }
-  .scan-input {
-    width: 100%;
-    background: var(--surface2);
-    border: 2px solid var(--accent);
-    border-radius: 8px;
-    color: var(--text-bright);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 20px;
-    padding: 14px 16px;
-    outline: none;
-    text-align: center;
-    letter-spacing: 2px;
-  }
-  .scan-input::placeholder { color: var(--text-dim); font-size: 14px; letter-spacing: 0; }
-  .scan-feedback {
-    border-radius: 8px;
-    padding: 16px;
-    margin-top: 12px;
-    display: none;
-  }
-  .scan-feedback.ok { display: block; background: rgba(0,201,122,.1); border: 1px solid var(--green); }
-  .scan-feedback.err { display: block; background: rgba(255,59,59,.1); border: 1px solid var(--red); }
-  .scan-product-name { font-size: 16px; font-weight: 700; color: var(--text-bright); margin-bottom: 4px; }
-  .scan-sku { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
-  .scan-qty-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-  .scan-qty-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-  .scan-qty-val { font-family: 'Share Tech Mono', monospace; font-size: 26px; font-weight: 700; }
-  .scan-ops { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-  .mode-toggle { display: flex; gap: 8px; margin-bottom: 20px; }
-  .mode-btn {
-    flex: 1;
-    padding: 10px;
-    border: 2px solid var(--border);
-    background: var(--surface2);
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    text-align: center;
-    transition: all .2s;
-  }
-  .mode-btn.active-entrada { border-color: var(--green); color: var(--green); background: rgba(0,201,122,.08); }
-  .mode-btn.active-saida { border-color: var(--red); color: var(--red); background: rgba(255,59,59,.08); }
-
-  /* ── PRINT ── */
-  .print-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-  }
-  .print-item {
-    background: #fff;
-    border-radius: 6px;
-    padding: 10px;
-    text-align: center;
-  }
-  .print-item-name {
-    font-size: 9px;
-    font-weight: 700;
-    color: #222;
-    margin-top: 6px;
-    line-height: 1.3;
-    word-break: break-word;
-  }
-
-  /* ── HISTORY ── */
-  .history-list { display: flex; flex-direction: column; gap: 8px; }
-  .history-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .history-name { font-weight: 600; color: var(--text-bright); font-size: 14px; }
-  .history-meta { font-size: 12px; color: var(--text-dim); }
-  .history-delta { font-family: 'Share Tech Mono', monospace; font-size: 16px; font-weight: 700; }
-  .delta-pos { color: var(--green); }
-  .delta-neg { color: var(--red); }
-
-  /* ── TOAST ── */
-  #toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--accent);
-    padding: 14px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-bright);
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(12px);
-    transition: all .3s;
-    pointer-events: none;
-    max-width: 320px;
-  }
-  #toast.show { opacity: 1; transform: translateY(0); }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 600px) {
-    header { padding: 0 12px; }
-    .header-stats { gap: 12px; }
-    .stat-val { font-size: 16px; }
-    .page { padding: 14px; }
-    th, td { padding: 8px 10px; }
-  }
-
-  @media print {
-    body { background: #fff; color: #000; }
-    header, .tabs, .no-print { display: none !important; }
-    .page { display: block !important; padding: 0; }
-    #page-print { display: block !important; }
-    .print-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .print-item { border: 1px solid #ccc; }
-  }
-
-  .section-title {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 14px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .empty-state {
-    text-align: center;
-    padding: 48px;
-    color: var(--text-dim);
-    font-size: 14px;
-  }
-  .chip {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-  .chip-un { background: rgba(59,139,255,.15); color: var(--blue); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QGK — Controle de Estoque</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<header>
-  <div class="logo">QGK <span>Estoque</span></div>
-  <div class="header-stats">
-    <div class="stat"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Produtos</div></div>
-    <div class="stat"><div class="stat-val" id="stat-items">0</div><div class="stat-lbl">Itens</div></div>
-    <div class="stat"><div class="stat-val" id="stat-zero" style="color:var(--red)">0</div><div class="stat-lbl">Zerados</div></div>
+<!-- HEADER -->
+<header id="app-header">
+  <div class="logo">
+    <span class="logo-mark">QGK</span>
+    <span class="logo-divider"></span>
+    <span class="logo-label">Estoque</span>
+  </div>
+  <div class="header-center" id="app-tabs-inline">
+    <button class="tab active" data-tab="estoque">📦 Estoque</button>
+    <button class="tab" data-tab="scanner">📷 Scanner</button>
+    <button class="tab" data-tab="historico">📋 Histórico</button>
+    <button class="tab" data-tab="imprimir">🖨️ Imprimir</button>
+    <button class="tab" data-tab="sheets">☁️ Sheets</button>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill">
+      <span class="stat-pill-val" id="stat-total">0</span>
+      <span class="stat-pill-lbl">produtos</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-pill-val" id="stat-items">0</span>
+      <span class="stat-pill-lbl">itens</span>
+    </div>
+    <div class="stat-pill danger">
+      <span class="stat-pill-val" id="stat-zero">0</span>
+      <span class="stat-pill-lbl">zerados</span>
+    </div>
+    <div class="sync-badge" id="sync-indicator" title="Status da sincronização com Google Sheets">
+      <span class="sync-dot"></span>
+      <span class="sync-label">Local</span>
+    </div>
   </div>
 </header>
 
-<nav class="tabs">
-  <div class="tab active" onclick="switchTab('estoque')">📦 Estoque</div>
-  <div class="tab" onclick="switchTab('scanner')">📷 Scanner</div>
-  <div class="tab" onclick="switchTab('historico')">📋 Histórico</div>
-  <div class="tab" onclick="switchTab('print')">🖨️ Imprimir</div>
+<!-- MOBILE TABS -->
+<nav class="tabs-mobile" id="app-tabs">
+  <button class="tab active" data-tab="estoque">📦</button>
+  <button class="tab" data-tab="scanner">📷</button>
+  <button class="tab" data-tab="historico">📋</button>
+  <button class="tab" data-tab="imprimir">🖨️</button>
+  <button class="tab" data-tab="sheets">☁️</button>
 </nav>
 
-<!-- ═══════════════════ ESTOQUE ═══════════════════ -->
-<div id="page-estoque" class="page active">
-  <div class="search-row">
-    <div class="search-wrap">
-      <input type="text" id="search-input" placeholder="Buscar por nome ou SKU..." oninput="renderTable()" autocomplete="off">
-    </div>
-    <button class="btn btn-ghost" onclick="openAddModal()">＋ Produto</button>
-    <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Produto</th>
-          <th>SKU</th>
-          <th>Unidade</th>
-          <th>Qtd</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="table-body"></tbody>
-    </table>
-  </div>
-  <div id="table-empty" class="empty-state" style="display:none">Nenhum produto encontrado.</div>
-</div>
+<main id="app-main">
 
-<!-- ═══════════════════ SCANNER ═══════════════════ -->
-<div id="page-scanner" class="page">
-  <div class="scanner-card">
-    <div class="scanner-title">Scanner de Código de Barras</div>
-    <div class="scanner-sub">
-      Aponte o leitor USB para o código de barras na caixa.<br>
-      O campo abaixo captura automaticamente o SKU escaneado.
-    </div>
-    <div class="mode-toggle">
-      <div class="mode-btn active-entrada" id="mode-entrada" onclick="setMode('entrada')">▲ Entrada</div>
-      <div class="mode-btn" id="mode-saida" onclick="setMode('saida')">▼ Saída</div>
-    </div>
-    <div class="scan-input-wrap">
-      <input class="scan-input" id="scan-field" type="text" placeholder="Aguardando leitura..." autocomplete="off" autofocus>
-    </div>
-    <div id="scan-feedback" class="scan-feedback">
-      <div class="scan-product-name" id="scan-pname"></div>
-      <div class="scan-sku" id="scan-psku"></div>
-      <div class="scan-qty-row">
-        <span class="scan-qty-label">Estoque atual:</span>
-        <span class="scan-qty-val" id="scan-pqty"></span>
+  <!-- ═══ ESTOQUE ═══ -->
+  <section id="page-estoque" class="page active">
+    <div class="page-toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="search-input" placeholder="Buscar por nome ou SKU..." autocomplete="off">
       </div>
-      <div class="scan-ops">
-        <button class="btn btn-green" onclick="adjustQty(1)">＋1</button>
-        <button class="btn btn-green" onclick="adjustQty(5)">＋5</button>
-        <button class="btn btn-green" onclick="adjustQty(10)">＋10</button>
-        <button class="btn btn-red" onclick="adjustQty(-1)">−1</button>
-        <button class="btn btn-red" onclick="adjustQty(-5)">−5</button>
-        <button class="btn btn-ghost" onclick="openSetQtyModal()">Definir qtd</button>
+      <div class="toolbar-actions">
+        <button class="btn btn-primary" onclick="UI.openAddModal()">＋ Produto</button>
+        <button class="btn btn-secondary" id="btn-view-loc" onclick="UI.toggleLocationView()">🗺️ Mapa</button>
+        <button class="btn btn-secondary" onclick="Store.exportCSV()">⬇ CSV</button>
       </div>
     </div>
-    <div id="scan-notfound" class="scan-feedback err" style="display:none">
-      <div style="color:var(--red);font-weight:700">SKU não encontrado</div>
-      <div id="scan-notfound-sku" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-dim);margin-top:4px"></div>
+
+    <div class="table-wrap">
+      <table id="products-table">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>SKU</th>
+            <th>Localização</th>
+            <th>Unid.</th>
+            <th>Qtd</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
     </div>
-  </div>
-</div>
-
-<!-- ═══════════════════ HISTÓRICO ═══════════════════ -->
-<div id="page-historico" class="page">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-    <div class="section-title" style="margin:0;border:none">Últimas movimentações</div>
-    <button class="btn btn-ghost btn-sm" onclick="clearHistory()">Limpar histórico</button>
-  </div>
-  <div id="history-list" class="history-list"></div>
-  <div id="history-empty" class="empty-state" style="display:none">Nenhuma movimentação registrada ainda.</div>
-</div>
-
-<!-- ═══════════════════ IMPRIMIR ═══════════════════ -->
-<div id="page-print" class="page">
-  <div class="search-row no-print">
-    <div class="search-wrap">
-      <input type="text" id="print-search" placeholder="Filtrar produtos para imprimir..." oninput="renderPrintGrid()" autocomplete="off">
+    <div id="table-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📦</div>
+      <p>Nenhum produto encontrado.</p>
     </div>
-    <button class="btn btn-accent" onclick="window.print()">🖨️ Imprimir página</button>
-  </div>
-  <div id="print-grid" class="print-grid"></div>
-</div>
 
-<!-- ═══════════════════ MODAL PRODUTO ═══════════════════ -->
-<div class="modal-bg" id="modal-product">
+    <!-- Mapa de Localização -->
+    <div id="location-map" style="display:none">
+      <div class="loc-map-header">
+        <h2 class="loc-map-title">Mapa de Localização</h2>
+        <p class="loc-map-desc">Produtos agrupados por Bloco e Corredor.</p>
+      </div>
+      <div id="loc-map-grid" class="loc-map-grid"></div>
+    </div>
+  </section>
+
+  <!-- ═══ SCANNER ═══ -->
+  <section id="page-scanner" class="page">
+    <div class="scanner-wrap">
+      <div class="scanner-card">
+        <div class="scanner-card-header">
+          <h2 class="scanner-title">Scanner de Código de Barras</h2>
+          <p class="scanner-desc">Aponte o leitor USB para o código na caixa. O campo captura automaticamente.</p>
+        </div>
+
+        <div class="mode-toggle">
+          <button class="mode-btn active-entrada" id="mode-entrada" onclick="Scanner.setMode('entrada')">▲ Entrada</button>
+          <button class="mode-btn" id="mode-saida" onclick="Scanner.setMode('saida')">▼ Saída</button>
+        </div>
+
+        <div class="scan-field-wrap">
+          <span class="scan-field-icon">📷</span>
+          <input class="scan-input" id="scan-field" type="text" placeholder="Aguardando leitura…" autocomplete="off" spellcheck="false">
+          <span class="scan-pulse"></span>
+        </div>
+
+        <div id="scan-result-ok" class="scan-result scan-ok" style="display:none">
+          <div class="scan-ok-header">
+            <span class="scan-ok-icon">✓</span>
+            <div>
+              <div class="scan-product-name" id="scan-pname"></div>
+              <div class="scan-product-sku" id="scan-psku"></div>
+              <div class="scan-product-loc" id="scan-ploc" style="display:none"></div>
+            </div>
+          </div>
+          <div class="scan-qty-display">
+            <span class="scan-qty-label">Estoque atual</span>
+            <span class="scan-qty-val" id="scan-pqty">0</span>
+          </div>
+          <div class="scan-actions">
+            <button class="btn btn-green" onclick="Scanner.adjust(1)">＋1</button>
+            <button class="btn btn-green" onclick="Scanner.adjust(5)">＋5</button>
+            <button class="btn btn-green" onclick="Scanner.adjust(10)">＋10</button>
+            <button class="btn btn-red"   onclick="Scanner.adjust(-1)">−1</button>
+            <button class="btn btn-red"   onclick="Scanner.adjust(-5)">−5</button>
+            <button class="btn btn-secondary" onclick="UI.openSetQtyModal()">Definir qtd</button>
+          </div>
+        </div>
+
+        <div id="scan-result-err" class="scan-result scan-err" style="display:none">
+          <div class="scan-err-icon">⚠</div>
+          <div class="scan-err-title">SKU não encontrado</div>
+          <div class="scan-err-code" id="scan-err-code"></div>
+          <button class="btn btn-secondary" style="margin-top:14px" onclick="UI.openAddModalWithSku()">＋ Cadastrar este produto</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HISTÓRICO ═══ -->
+  <section id="page-historico" class="page">
+    <div class="page-toolbar">
+      <h2 class="page-title">Movimentações</h2>
+      <button class="btn btn-secondary btn-sm" onclick="History.clear()">🗑 Limpar</button>
+    </div>
+    <div id="history-list" class="history-list"></div>
+    <div id="history-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📋</div>
+      <p>Nenhuma movimentação registrada.</p>
+    </div>
+  </section>
+
+  <!-- ═══ IMPRIMIR ═══ -->
+  <section id="page-imprimir" class="page">
+    <div class="page-toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="print-search" placeholder="Filtrar produtos..." autocomplete="off">
+      </div>
+      <div class="toolbar-actions">
+        <button class="btn btn-secondary" onclick="Print.selectAll()">Selec. todos</button>
+        <button class="btn btn-secondary" onclick="Print.clearSelection()">Limpar</button>
+        <button class="btn btn-blue" onclick="Print.openZebraModal()">🦓 Gerar ZPL</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
+      </div>
+    </div>
+    <p class="print-hint no-print">Clique para selecionar • <strong id="print-sel-count">0</strong> selecionados</p>
+    <div id="print-grid" class="print-grid"></div>
+  </section>
+
+  <!-- ═══ GOOGLE SHEETS ═══ -->
+  <section id="page-sheets" class="page">
+    <div class="sheets-layout">
+
+      <div class="sheets-card">
+        <div class="sheets-card-head">
+          <span class="sheets-card-ico">⚙️</span>
+          <h3>Configuração</h3>
+        </div>
+        <p class="sheets-card-desc">
+          Cole a URL do seu Apps Script publicado como <strong>Web App</strong>.
+          O Google Sheets é o banco de dados central — todos os dados vivem lá.
+        </p>
+        <div class="form-group">
+          <label>URL do Web App</label>
+          <input type="text" id="gs-url" placeholder="https://script.google.com/macros/s/AKfyc.../exec" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="Sheets.saveUrl()">💾 Salvar</button>
+          <button class="btn btn-secondary" onclick="Sheets.testConnection()">🔌 Testar</button>
+        </div>
+        <div id="gs-status" class="gs-status" style="display:none"></div>
+      </div>
+
+      <div class="sheets-card">
+        <div class="sheets-card-head">
+          <span class="sheets-card-ico">🔄</span>
+          <h3>Sincronização</h3>
+        </div>
+        <p class="sheets-card-desc">
+          <strong>Enviar →</strong> grava o estoque local na planilha (aba "Estoque").<br>
+          <strong>Importar ←</strong> lê a planilha e atualiza as quantidades locais por SKU.
+        </p>
+        <div class="form-actions">
+          <button class="btn btn-green" onclick="Sheets.syncTo()">⬆️ Enviar → Sheets</button>
+          <button class="btn btn-blue"  onclick="Sheets.syncFrom()">⬇️ Importar ← Sheets</button>
+        </div>
+        <pre id="sync-log" class="sync-log" style="display:none"></pre>
+      </div>
+
+      <div class="sheets-card sheets-card-full">
+        <div class="sheets-card-head">
+          <span class="sheets-card-ico">📋</span>
+          <h3>Código do Apps Script</h3>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="Sheets.copyCode()">📋 Copiar</button>
+        </div>
+        <p class="sheets-card-desc">
+          Abra sua planilha → <strong>Extensões → Apps Script</strong> → cole este código → publique como Web App.
+        </p>
+        <pre id="gas-code-block" class="code-block"></pre>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Produto -->
+<div class="modal-backdrop" id="modal-product">
   <div class="modal">
-    <div class="modal-title" id="modal-product-title">Adicionar Produto</div>
-    <div class="form-row">
-      <label>Nome do Produto</label>
-      <input type="text" id="mp-name" placeholder="Ex: PISTOLA AIRSOFT SPRING S226...">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-product-title">Adicionar Produto</h3>
+      <button class="modal-close" onclick="UI.closeModal('modal-product')">✕</button>
     </div>
-    <div class="form-row">
-      <label>Código SKU</label>
-      <input type="text" id="mp-sku" placeholder="Ex: I021950-1">
-    </div>
-    <div class="form-row">
-      <label>Quantidade Inicial</label>
-      <input type="number" id="mp-qty" value="0" min="0">
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nome do Produto</label>
+        <input type="text" id="mp-name" placeholder="PISTOLA AIRSOFT SPRING S226...">
+      </div>
+      <div class="form-group">
+        <label>Código SKU</label>
+        <input type="text" id="mp-sku" placeholder="I021950-1">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>🧱 Bloco</label>
+          <input type="text" id="mp-bloco" placeholder="A, B, C…">
+        </div>
+        <div class="form-group">
+          <label>🚶 Corredor</label>
+          <input type="text" id="mp-corredor" placeholder="01, 02…">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Quantidade</label>
+        <input type="number" id="mp-qty" value="0" min="0">
+      </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-product')">Cancelar</button>
-      <button class="btn btn-accent" onclick="saveProduct()">Salvar</button>
+      <button class="btn btn-secondary" onclick="UI.closeModal('modal-product')">Cancelar</button>
+      <button class="btn btn-primary"   onclick="UI.saveProduct()">Salvar</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════ MODAL CÓDIGO DE BARRAS ═══════════════════ -->
-<div class="modal-bg" id="modal-barcode">
+<!-- Barcode -->
+<div class="modal-backdrop" id="modal-barcode">
   <div class="modal">
-    <div class="modal-title">Código de Barras</div>
-    <div id="bc-content"></div>
+    <div class="modal-header">
+      <h3 class="modal-title">Código de Barras</h3>
+      <button class="modal-close" onclick="UI.closeModal('modal-barcode')">✕</button>
+    </div>
+    <div class="modal-body"><div id="bc-content"></div></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-barcode')">Fechar</button>
-      <button class="btn btn-accent" onclick="printBarcode()">🖨️ Imprimir</button>
+      <button class="btn btn-secondary" onclick="UI.closeModal('modal-barcode')">Fechar</button>
+      <button class="btn btn-primary"   onclick="UI.printBarcode()">🖨️ Imprimir</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════ MODAL AJUSTAR QTD ═══════════════════ -->
-<div class="modal-bg" id="modal-setqty">
-  <div class="modal">
-    <div class="modal-title">Definir Quantidade</div>
-    <div style="margin-bottom:16px;color:var(--text-dim);font-size:14px" id="setqty-label"></div>
-    <div class="form-row">
-      <label>Nova Quantidade</label>
-      <input type="number" id="setqty-val" value="0" min="0">
+<!-- Definir Qtd -->
+<div class="modal-backdrop" id="modal-setqty">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 class="modal-title">Definir Quantidade</h3>
+      <button class="modal-close" onclick="UI.closeModal('modal-setqty')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-product-label" id="setqty-product-name"></p>
+      <div class="form-group">
+        <label>Nova Quantidade</label>
+        <input type="number" id="setqty-value" value="0" min="0">
+      </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-setqty')">Cancelar</button>
-      <button class="btn btn-accent" onclick="confirmSetQty()">Confirmar</button>
+      <button class="btn btn-secondary" onclick="UI.closeModal('modal-setqty')">Cancelar</button>
+      <button class="btn btn-primary"   onclick="UI.confirmSetQty()">Confirmar</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════ TOAST ═══════════════════ -->
-<div id="toast"></div>
-
-<script>
-// ─── DATA ──────────────────────────────────────────────────────────────────────
-const INITIAL_PRODUCTS = [
-  // Adaptadores / Adesivos
-  ["ADAPTADOR G36 PARA ARMA DE PRESSÃO SG36-53","I02140","UN"],
-  ["ADESIVO PEROLA LEÃO 30X40","I02170","UN"],
-  // Airsoft pistolas VG
-  ["AIRSOFT PISTOLA VG 1911-V14 GOLD METAL MOLA 6MM","I02200","UN"],
-  ["AIRSOFT PISTOLA VG PT92 - V22 GOLD MOLA 6MM","I02201","UN"],
-  ["AIRSOFT SHOTGUN VG PUMP TATICAL SHORT MOLA 6MM","I02202","UN"],
-  // Alavancas
-  ["ALAVANCA DE ARMAÇÃO DE RIFLE DE AIRSOFT ELETRICO AUG","I00010","UN"],
-  ["ALAVANCA DE SELEÇÃO SEMI/AUTO RIFLE SAK-11 QGK","I02140","UN"],
-  ["ALAVANCA DE SELEÇÃO SEMI/AUTO RIFLE SM4-90 QGK","I02141","UN"],
-  ["ALÇA DE MIRA DE FIBRA TRASEIRA PARA CARABINA QGK14 BLACK EDITION","I02160","UN"],
-  ["ALVO DE PAPEL","I02160","UN"],
-  ["ALVO DE PAPEL ROSSI AZUL 14X14CM (10 UNID)","I02180","UN"],
-  ["ALVOS DE PRECISÃO 140X140","I02200","UN"],
-  ["ALVOS ROSSI 14X14 PRETO","I02201","UN"],
-  ["ALVOS ROSSI AZUL 14X14","I02202","UN"],
-  // Aneis
-  ["ANEL DE VEDAÇÃO DA TAMPA DA BASE DO CARREGADOR CO2 APS AC011","I00000","UN"],
-  ["ANEL DE VEDAÇÃO PISTOLA SR92-A6 QGK","I02100","UN"],
-  ["ANEL DE VEDAÇÃO PISTOLA SR92-M8 QGK","I02101","UN"],
-  // Bandoleira
-  ["BANDOLEIRA 80 CM COM SERIGRAFIA ROSSI","I02200","UN"],
-  ["BANDOLEIRA QGK99SL","I02201","UN"],
-  // Bocal
-  ["BASE DO BOCAL PARA PISTOLA DE AIRSOFT A GÁS BLACK HORNET","I00000","UN"],
-  ["BOCAL DE ALIMENTAÇÃO RIFLE SM4-10 QGK","I02141","UN"],
-  ["BOCAL DE LIBERAÇÃO DO GÁS PARA PISTOLAS DE AIRSOFT XTP","I00147","UN"],
-  // Bombas
-  ["BOMBA MANUAL PCP 3 ESTÁGIOS QGK BM3","I02181","UN"],
-  ["BOMBA MANUAL PCP 4 ESTÁGIOS QGK BM4","I02181","UN"],
-  ["BOMBA MANUAL PCP FXR 162 300 BAR C/FILTRO","I02418","UN"],
-  ["BOMBA PNEUMATICA MANUAL ROSSI 2020/2021 PLUS PCP 300BAR","I02198","UN"],
-  ["BOMBA PNEUMATICA CARABINA PCP PE RETRATIL - VIRTUS","I02171","UN"],
-  // Borrachas
-  ["BORRACHA DE VEDAÇÃO DA CAMARA DE GÁS REVOLVER TITAN QGK","I02133","UN"],
-  ["BORRACHA DO BOCAL DE ALIMENTAÇÃO SR CAPA-A2 QGK","I02143","UN"],
-  ["BORRACHA DO HOP-P PARA RIFLES DE AIRSOFT","I00587","UN"],
-  ["BORRACHA DO PISTÃO PARA RIFLES DE AIRSOFT ELETRICO","I00578","UN"],
-  // Cabeça
-  ["CABEÇA DO PISTÃO PARA RIFLES DE AIRSOFT ELETRICO","I00579","UN"],
-  // Caixas
-  ["CAIXA DE ENGRENAGENS COMPLETA COM FIAÇÃO FRONTAL PARA RIFLES DE AIRSOFT ELETRICO","I00579","UN"],
-  ["CAIXA DE ENGRENAGENS COMPLETA COM FIAÇÃO PARA RIFLES DE AIRSOFT ELETRICO V3","I00579","UN"],
-  // Câmera
-  ["CAMARA DE CO2 COMPLETA PARA REVOLVER TITAN TI-20 QGK","I02138","UN"],
-  // Canecas
-  ["CANECA TÉRMICA MUG 12 OZ 335 ML QGK AZUL COM TAMPA","I02034","UN"],
-  ["CANECA TÉRMICA MUG 12 OZ 335 ML QGK BRANCO COM TAMPA","I02034","UN"],
-  ["CANECA TÉRMICA MUG 12 OZ 335 ML QGK CINZA COM TAMPA","I02034","UN"],
-  ["CANECA TÉRMICA MUG 12 OZ 335 ML QGK INOX COM TAMPA","I02020","UN"],
-  ["CANECA TÉRMICA MUG 12 OZ 335 ML QGK ROMÃ COM TAMPA","I02034","UN"],
-  ["CANECA TÉRMICA MUG 12 OZ 335 ML QGK TURQUESA COM TAMPA","I02034","UN"],
-  ["CANECA TÉRMICA MUG 24 OZ 709 ML QGK INOX COM TAMPA","I02019","UN"],
-  // Canivetes
-  ["CANIVETE 120 - TAUE","I01878","UN"],
-  ["CANIVETE 966 - TAUE","I01879","UN"],
-  ["CANIVETE HC-002 - TAUE","I01881","UN"],
-  ["CANIVETE PUSH DAGGER SC001 PRETO - TAUE","I01681","UN"],
-  // Carabinas de pressão
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + 1","I02173","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + 3","I02173","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + 5","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + 10","I02173","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + BOMBA","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + CAPA","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + LUNETA","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK CHUMBINHOS","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK CHUMBINHOS + BOMBA","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK LUNETA 4-16X40","I02175","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM - MARROM","I02174","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM + LUNETA 4X32EG + CAPA + CHUMB + BOMBA + ALVO","I02199","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + CAPA + IMPACT + LUNETA + BOMBA","I02178","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + CAPA + PIGBOY + LUNETA + BOMBA","I02178","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM QGK + LUNETA4X32 - Marrom","I02198","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM 9X40 + CAPA + BOMBA + ALVO","I02199","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM 9X40 + CAPA + LUNETA 3","I02199","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM 16X40 + CAPA + ALVO","I02199","UN"],
-  ["CARABINA AIRGUN PCP G850 5,5MM MADEIRA QGK + LUNETA","I02162","UN"],
-  ["CARABINA AIRGUN PCP ESP 1550H BLACK 5,5MM - QGK BY EKOL","I02002","UN"],
-  ["CARABINA DE PRESSÃO EKOL","I02001","UN"],
-  ["CARABINA DE PRESSÃO QGK14 MD-C 5,5MM - QGK","I02001","UN"],
-  ["CARABINA DE PRESSÃO QGK14 MD-C 5,5MM + ALVO - QGK","I02166","UN"],
-  ["CARABINA DE PRESSÃO QGK14 MD-C 5,5MM + CAPA - QGK","I02166","UN"],
-  ["CARABINA DE PRESSÃO QGK14 MD-C 5,5MM + CAPA + ALVO","I02166","UN"],
-  ["CARABINA DE PRESSÃO QGK14 MD-C 5,5MM + LUNETA","I02165","UN"],
-  ["CARABINA DE PRESSÃO THUNDER 4,5MM - QGK BY EKOL","I02001","UN"],
-  ["CARABINA DE PRESSÃO THUNDER 5,5MM - QGK BY EKOL","I02001","UN"],
-  ["CARABINA DE PRESSÃO THUNDER-FM 6,35MM - QGK BY EKOL","I02001","UN"],
-  ["CARABINA DE PRESSÃO ULTIMATE 4,5MM - QGK BY EKOL","I02001","UN"],
-  ["CARABINA DE PRESSÃO ULTIMATE 5,5MM - QGK BY EKOL","I02001","UN"],
-  ["CARABINA DE PRESSÃO ULTIMATE 6,35MM - QGK BY EKOL","I02001","UN"],
-  ["CARABINA GR NITRO ULTIMATE 4,5MM + CAPA + CHUMBFF + LUNETA4-16X40EG - Preto","I02189","UN"],
-  ["CARABINA GR NITRO ULTIMATE 4,5MM + CAPA + CHUMBFF + LUNETA3-9X40EG - Preto","I02189","UN"],
-  ["CARABINA GR NITRO ULTIMATE 4,5MM + CAPA + CHUMBFF + LUNETA4X32 - Preto","I02189","UN"],
-  ["CARABINA GR NITRO ULTIMATE 4,5MM","I02164","UN"],
-  // Carregadores
-  ["CARREGADOR 21RDS USP COMPACT GBB KSC","I00966","UN"],
-  ["CARREGADOR 25RDS USP GBB KSC","I00966","UN"],
-  ["CARREGADOR 29RDS USP MATCH GBB - KSC","I00966","UN"],
-  ["CARREGADOR AK74 ERG AEG 30 60 RDS KWA","I00966","UN"],
-  ["CARREGADOR AKG 74M 40 RDS GBB RDS KSC","I00966","UN"],
-  ["CARREGADOR G26 15RDS GBB KSC","I00967","UN"],
-  ["CARREGADOR HK45 29RDS GBB KSC","I00968","UN"],
-  ["CARREGADOR LONGO 49RDS SERIES GBB KSC","I00968","UN"],
-  ["CARREGADOR M11A1 50RDS SMG GBB KSC","I00968","UN"],
-  ["CARREGADOR M4A1 40 RDS GBB KSC","I00968","UN"],
-  ["CARREGADOR M4A1 ERG AEG 120 RDS KSC","I00968","UN"],
-  ["CARREGADOR M4A1 ERG/AEG 30/60 RDS - KSC","I00968","UN"],
-  ["CARREGADOR M9 SERIES 24RDS GBB KSC","I00968","UN"],
-  ["CARREGADOR M9R M9 32RDS GBB KSC","I00969","UN"],
-  ["CARREGADOR PARA PISTOLA AIRSOFT R30 6MM GBB ARMY","I00974","UN"],
-  ["CARREGADOR PARA PISTOLA AIRSOFT R31 6MM GBB ARMY","I00974","UN"],
-  ["CARREGADOR PARA PISTOLAS AIRSOFT SB001B A GÁS SB SHARK BLACK","I00975","UN"],
-  ["CARREGADOR PARA PISTOLAS DE AIRSOFT AC045 A GÁS CO2 D-MOD","I00975","UN"],
-  ["CARREGADOR PARA WE ACE VD BK 22BBS GREEN GAS 6MM","I00977","UN"],
-  ["CARREGADOR PARA WE AK PMC GREEN GAS 30BBS 6MM","I00977","UN"],
-  ["CARREGADOR PISTOLAS AIRGUN SB002 GÁS SD SHARK DESERT FF 4,5MM","I00975","UN"],
-  // Cases
-  ["CASE RÍGIDO QGK 1235 PRETO","I02021","UN"],
-  ["CASE RÍGIDO QGK 315 PRETO","I02022","UN"],
-  // Chaves
-  ["CHAVE ALLEN","I02208","UN"],
-  ["CHAVE DE FENDA MINI QGK99","I02180","UN"],
-  // Chumbinhos
-  ["CHUMBINHO DIABOLÔ 100UN 5,5MM","I02188","UN"],
-  ["CHUMBINHO FF BALLISTIC POWER 5,5MM 0,82G 75UN","I02176","UN"],
-  ["CHUMBINHO FF FIREFLY ULTRA PRECISION 4,5MM 0,38G 100UN","I02176","UN"],
-  ["CHUMBINHO FF HELL-BOY SHORT TITANIUM 4,5MM 0,40G 100UN","I02176","UN"],
-  ["CHUMBINHO FF HELL-BOY TITANIUM 5,5MM 1,05G 50UN","I02176","UN"],
-  ["CHUMBINHO FF IMPACT STRIKE 5,5MM 1,00G 70UN","I02176","UN"],
-  // Cilindros
-  ["CILINDROS DE CO2","I02205","UN"],
-  // Coldres
-  ["COLDRE NEOPRENE REVOLVER 5 POLEGADAS PRETO CANHOTO","I02058","UN"],
-  ["COLDRE NEOPRENE REVOLVER 5 POLEGADAS PRETO DESTRO","I02058","UN"],
-  // Conjuntos
-  ["CONJUNTO BOCAL DE ALIMENTAÇÃO PISTOLA SR CAPA-M14 QGK","I02143","UN"],
-  ["CONJUNTO BOCAL DE ALIMENTAÇÃO PISTOLA SR92M1-M10 QGK","I02142","UN"],
-  ["CONJUNTO DA MIRA FRONTAL CARABINA NIGHT WOLF","I01055","UN"],
-  ["CONJUNTO DE ANÉIS DE VEDAÇÃO CARABINA PCP G850 QGK","I02163","UN"],
-  ["CONJUNTO DE FIOS (DOBRÁVEL) RIFLE SAK-09 QGK","I02141","UN"],
-  ["CONJUNTO DE FIOS (FIXO) RIFLE SAK-08 QGK","I02141","UN"],
-  ["CONJUNTO DE GATILHO (SEM MOLA) RIFLE SAK-13 QGK","I02142","UN"],
-  ["CONJUNTO DO MECANISMO DE DISPARO PARA R17 ARMY","I02132","UN"],
-  ["CONJUNTO DO MECANISMO DE DISPARO PISTOLA DE AIRSOFT ACP APS","I01056","UN"],
-  ["CONJUNTO MOLA ALAVANCA LIBERAÇÃO GÁS PISTOLAS AIRSOFT D-MOD","I01058","UN"],
-  // Copos
-  ["COPO TÉRMICO TUMBLER 20 OZ 591 ML QGK BRANCO COM TAMPA","I02021","UN"],
-  ["COPO TÉRMICO TUMBLER 20 OZ 591 ML QGK PRETO COM TAMPA","I02020","UN"],
-  ["COPO TÉRMICO TUMBLER 30 OZ 887 ML QGK AZUL COM TAMPA","I02034","UN"],
-  ["COPO TÉRMICO TUMBLER 30 OZ 887 ML QGK AZUL HALF COM TAMPA","I02034","UN"],
-  ["COPO TÉRMICO TUMBLER 30 OZ 887 ML QGK AZUL STEEL COM TAMPA","I02031","UN"],
-  ["COPO TÉRMICO TUMBLER 30 OZ 887 ML QGK BRANCO COM TAMPA","I02022","UN"],
-  ["COPO TÉRMICO TUMBLER 30 OZ 887 ML QGK CINZA COM TAMPA","I02031","UN"],
-  ["COPO TÉRMICO TUMBLER 30 OZ 887 ML QGK INOX COM TAMPA","I02021","UN"],
-  // Esferas
-  ["ESFERA PLAST. ROSSI BIO 0,28G (SACO 1.000 UN) 6,0MM","I02204","UN"],
-  ["ESFERA PLASTICA 0,25G (SACO 1.000 UN) 6,0MM","I02204","UN"],
-  ["ESFERA PLASTICA 0,30G (SACO 1.000 UN) 6,0MM","I02204","UN"],
-  ["ESFERAS 0,12G (PCT COM 300 UNID)","I02205","UN"],
-  ["ESFERAS 0,20G (PCT COM 1.000 UNIDADES)","I02205","UN"],
-  ["ESFERAS DE AÇO QGK 4,5MM POTE 1000 UNIDADES","I02171","UN"],
-  ["ESFERAS DE AÇO QGK 4,5MM POTE 300 UNIDADES","I02131","UN"],
-  ["ESFERAS DE ALUMINIO 0,29G QGK 6MM POTE 100 UNIDADES","I02198","UN"],
-  ["ESFERAS DE ALUMINIO 0,29G QGK 6MM POTE 200 UNIDADES","I02206","UN"],
-  ["ESFERAS DE ALUMINIO 0,29G QGK 6MM POTE 300 UNIDADES","I02206","UN"],
-  ["ESFERAS DE ALUMINIO QGK 4,5MM POTE 300 UNIDADES","I02164","UN"],
-  ["ESFERAS DE ALUMINIO QGK 6MM POTE 300 UNIDADES","I02136","UN"],
-  // Ferramentas
-  ["FERRAMENTA PARA VALVULA DE CARREGADOR - WE","I01084","UN"],
-  ["FLASH HIDER PARA FAL 3001 e 3006 (BLACK)","I02208","UN"],
-  ["FLASH HIDER PARA M4 4003 (BLACK)","I02208","UN"],
-  ["FRAME PARA R17/18 ARMY","I01088","UN"],
-  // Garrafas
-  ["GARRAFA TÉRMICA PE 24 OZ 709 ML QGK AMARELO COM TAMPA","I02022","UN"],
-  ["GARRAFA TÉRMICA PE 24 OZ 709 ML QGK AZUL HALF COM TAMPA","I02062","UN"],
-  ["GARRAFA TÉRMICA PE 24 OZ 709 ML QGK AZUL STEEL COM TAMPA","I02020","UN"],
-  ["GARRAFA TÉRMICA PE 24 OZ 709 ML QGK BRANCO COM TAMPA","I02021","UN"],
-  ["GARRAFA TÉRMICA PE 24 OZ 709 ML QGK ROMÃ COM TAMPA","I02022","UN"],
-  ["GARRAFA TÉRMICA PE 24 OZ 709 ML QGK ROSA COM TAMPA","I02023","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK AZUL E AZUL COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK AZUL E BRANCO COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK AZUL E VERDE COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK AZUL ESCURO COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK BRANCO COM TAMPA","I02039","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK ROSA E AMARELO COM TAMPA","I02037","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK ROSA E AZUL COM TAMPA","I02037","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK ROXO E AZUL COM TAMPA","I02037","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK TURQUESA COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK VERDE E AMARELO COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK VERDE MILITAR COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK VERMELHO COM TAMPA","I02038","UN"],
-  ["GARRAFA TÉRMICA PL 32 OZ 946 ML QGK VERMELHO E LARANJA COM TAMPA","I02037","UN"],
-  // Gatilho
-  ["GATILHO DO RIFLE SM4-43 QGK","I02141","UN"],
-  // Gas
-  ["GREEN GÁS PARA AIRSOFT GBB TAIKOON NAUTIKA","I01099","UN"],
-  ["GREEN GAS PARA AIRSOFT ONU","I02153","UN"],
-  // Grip
-  ["GRIP DE AK47 QGK POLIMERO QGK","I02133","UN"],
-  ["GUIA DE MOLA PARA RIFLES DE AIRSOFT ELETRICO V2","I01103","UN"],
-  // Haste
-  ["HASTE PLÁSTICA QGK99L","I02180","UN"],
-  ["HOP-UP PARA R27/R28/R29 ARMY","I01105","UN"],
-  // Kits
-  ["KIT 10 CILINDROS DE GÁS CO2 12G - LEÃO","I02171","UN"],
-  ["KIT ALÇA + MASSA DE MIRA CARABINA QGK BLACK EDITION 5,5MM","I02182","UN"],
-  ["KIT BBS QGK 0,12G COM 2000 BBS - 6 mm - Branco","I021963-1","UN"],
-  ["KIT BBS QGK 0,12G COM 3000 BBS - 6 mm - Branco","I021964-1","UN"],
-  ["KIT CANO QGK14 BLACK EDITION + ALÇA + MASSA DE MIRA","I02182","UN"],
-  ["KIT COM 10 CHUMBINHO 5,5MM 0,82G 100 UNIDADES","I02175","UN"],
-  ["KIT COM 5 CHUMBINHO 5,5MM 0,82G 100 UNIDADES","I02174","UN"],
-  ["KIT COM 7 CHUMBINHO 5,5MM 0,82G 100 UNIDADES","I02174","UN"],
-  ["KIT GÁS RAM ESPECIAL - QGK EVEREST 65KG","I01676","UN"],
-  ["KIT GAS RAM ESPECIAL QGK UNDER-B ML CLASSICA 45KG","I02110","UN"],
-  ["KIT GÁS RAM ESPECIAL/OEM - SPA B3-3 50KG","I01897","UN"],
-  // Lanternas
-  ["LANTERNA DE CABEÇA T6 LED 1800 LUMENS","I02027","UN"],
-  ["LANTERNA DE PISTOLA TATICA COM LASER E CAMERA - LS-CL7C-R - QGK","I01881","UN"],
-  ["LANTERNA LED QGK159A","I02179","UN"],
-  ["LANTERNA MC1 MAX 1000 LUMENS","I01886","UN"],
-  ["LANTERNA T4 MAX 1000 LUMENS","I01886","UN"],
-  ["LANTERNA TF DF30 MAX 2350 LUMENS","I02027","UN"],
-  ["LANTERNA TF L2 MAX 1000 LUMENS","I01886","UN"],
-  ["LANTERNA TF MC12 MAX 1000 LUMENS","I02026","UN"],
-  ["LANTERNA TF MINI2 MAX 220 LUMENS","I01886","UN"],
-  ["LANTERNA TF T62","I01886","UN"],
-  ["LANTERNA TRASEIRA BIKE CICLOVIA LED LASER","I01148","UN"],
-  ["LANTERNA TRUSTFIRE T70","I01880","UN"],
-  ["LANTERNA YM-8591","I01885","UN"],
-  // Lunetas
-  ["LUNETA 3-9X40EG QGK AL","I02024","UN"],
-  ["LUNETA 4-16X40 AOEG QGK","I02175","UN"],
-  ["LUNETA 4X20 BASIC QGK AL","I02024","UN"],
-  ["LUNETA 4X20MM FXR 123","I02172","UN"],
-  ["LUNETA 4X32 EG LONG QGK","I02175","UN"],
-  ["LUNETA 4X32 LONG QGK","I02024","UN"],
-  ["LUNETA 4X32MM FXR 124","I02172","UN"],
-  ["LUNETA DISCOVERY MS 4X32","I02204","UN"],
-  ["LUNETA QGK 4X32MM","I01152","UN"],
-  ["LUNETA ROSSI 4X20 (MOUNT 3/8)","I02205","UN"],
-  // Mag lip
-  ["MAG LIP PARA CARREGADOR DE L45-1911-A1 QGK","I02138","UN"],
-  ["MAG LIP PARA CARREGADOR DE L45-92-A1-45 QGK","I02137","UN"],
-  ["MAG LIP PARA CARREGADOR DE L45-CAPA-A1-45 QGK","I02137","UN"],
-  ["MAG LIP PARA CARREGADOR DE SR1911-A1 QGK","I02138","UN"],
-  ["MAG LIP PARA CARREGADOR SR CAPA-A1 QGK","I02143","UN"],
-  // Magazines
-  ["MAGAZINE AIRSOFT SPRING HS-B92 e HS-B92S 6MM - QGK","I02202","UN"],
-  ["MAGAZINE FAL MAG CO2 4,5MM QGK","I02202","UN"],
-  ["MAGAZINE G17 4,5MM QGK","I02161","UN"],
-  ["MAGAZINE M4 MAG CO2 4,5MM QGK","I02202","UN"],
-  ["MAGAZINE PCP G850 5,5MM QGK","I02162","UN"],
-  ["MAGAZINE PT92 4,5MM QGK","I02162","UN"],
-  // Maletas
-  ["MALETA DE PISTOLA SIMPLES QGK","I01676","UN"],
-  ["MALETA TÁTICA PARA ARMAS QGK","I02198","UN"],
-  // Manuais
-  ["MANUAL CUSTOMIZADO","I02209","UN"],
-  ["MANUAL IMPRESSO DE INSTRUICOES PARA USO E SEGURANCA DE EQUIPAMENTOS DE AIRSOFT","I02208","UN"],
-  ["MANUAL IMPRESSO G17 SPRING","I02206","UN"],
-  // Martelos
-  ["MARTELO REVÓLVER TITAN TI-15 QGK","I02143","UN"],
-  ["MARTELO REVÓLVER TITAN TI-15S QGK","I02143","UN"],
-  // Massa
-  ["MASSA DE MIRA DE FIBRA FRONTAL CARABINA QGK14 BLACK EDITION","I02163","UN"],
-  // Miras
-  ["MIRA DE PONTO VERMELHO DE ALTA PRECISÃO G17 SPRING","I02206","UN"],
-  ["MIRA HOLOGRAFICA ROSSI 1X20X30 (MOUNT 7/8) 22mm","I02205","UN"],
-  ["MIRA RED DOT QKG9982","I02179","UN"],
-  // Molas
-  ["MOLA DO BOCAL PARA PISTOLA DE AIRSOFT ACP E D-MOD","I01300","UN"],
-  ["MOLA DO BOCAL R27/28/29/30/31 ARMY","I01300","UN"],
-  ["MOLA DO MARTELO REVÓLVER TITAN TI-16 QGK","I02143","UN"],
-  // Motores
-  ["MOTOR DE ALTO TORQUE PARA CAIXA DE ENGRENAGENS VER.3 RIFLE SAK-01 QGK","I02141","UN"],
-  ["MOTOR DE ALTO TORQUE RIFLE SM4-1 QGK","I02140","UN"],
-  // Óleo
-  ["OLEO DE SILICONE","I02205","UN"],
-  ["ÓLEO DE SILICONE AIRSOFT 10ML","I02171","UN"],
-  // Outros
-  ["PÁ FIXA MULTIUSO TAUE FBI-QQ001","I01990","UN"],
-  ["PACOTE DE BBS QGK 6MM","I02179","UN"],
-  ["PAPER TARGET","I02164","UN"],
-  // Parafusos
-  ["PARAFUSO DA BASE DO CARREGADOR SR1911COM-A15 QGK","I02138","UN"],
-  ["PARAFUSO DE PERFURAÇÃO REVÓLVER TITAN TI-18 QGK","I02143","UN"],
-  ["PERFURADOR DO CILINDRO CO2 DO CARREGADOR L45-92-A17 QGK","I02138","UN"],
-  ["PERFURADOR DO CILINDRO CO2 DO CARREGADOR L45-CAPA-A17 QGK","I02137","UN"],
-  // Pilhas
-  ["PILHA AA QGK532","I02180","UN"],
-  // Pinhão / Pistões
-  ["PINHÃO DO MOTOR PARA RIFLES DE AIRSOFT ELETRICO APS","I01336","UN"],
-  ["PISTÃO EM POLICARBONATO PARA GEARBOX V3 DE RIFLES DE AIRSOFT ELETRICO","I01343","UN"],
-  ["PISTÃO POLICARBONATO GEARBOX V2 RIFLES DE AIRSOFT ELETRICO","I01343","UN"],
-  // Pistolas Airgun CO2
-  ["PISTOLA AIRGUN CO2 B92 AG FULL METAL 4,5MM - QGK","I01886","UN"],
-  ["PISTOLA AIRGUN CO2 COLT 1911 NBB 4,5MM QGK","I02002","UN"],
-  ["PISTOLA AIRGUN CO2 COLT 1911 NBB 4,5MM + MALETA + ALVO - Preto","I02168","UN"],
-  ["PISTOLA AIRGUN CO2 COLT 1911 NBB 4,5MM + MALETA + ESFERAS + CO2 + ALVO - Preto","I02168","UN"],
-  ["PISTOLA AIRGUN CO2 COLT 1911 NBB 4,5MM + CASE + ESFERAS + CO2 - Preto","I02177","UN"],
-  ["PISTOLA AIRGUN CO2 COLT 1911 NBB 4,5MM + CASE + ESFERAS + CO2 + ALVO - Preto","I02177","UN"],
-  // Pistolas Airgun Desert Eagle / Spring / SDE
-  ["PISTOLA AIRGUN SPRING SDE BK 6MM","I02195","UN"],
-  ["PISTOLA AIRGUN SPRING SDE BK 6MM + 2000 BBS","I02196","UN"],
-  ["PISTOLA AIRGUN SPRING SDE BK 6MM + ALVO","I02196","UN"],
-  ["PISTOLA AIRGUN SPRING SDE BK 6MM + MALETA + BBS + ALVOS","I02196","UN"],
-  ["PISTOLA AIRGUN SPRING S1911 6MM - QGK","I02168","UN"],
-  ["PISTOLA AIRGUN SPRING S1911 6MM - QGK + BBS","I02168","UN"],
-  ["PISTOLA AIRGUN SPRING S1911 6MM - QGK + ALVO","I02168","UN"],
-  ["PISTOLA AIRGUN SPRING S5 92 6MM - QGK","I02006","UN"],
-  // Pistolas Airgun Desert Eagle Black Edition
-  ["PISTOLA AIRGUN SPRING DESERT EAGLE BK 6MM","I02186","UN"],
-  ["PISTOLA AIRGUN SPRING DESERT EAGLE BK 6MM + 1000BBS","I02186","UN"],
-  ["PISTOLA AIRGUN SPRING DESERT EAGLE BK 6MM + 2000BBS","I02185","UN"],
-  ["PISTOLA AIRGUN SPRING DESERT EAGLE BK 6MM + QGK + CAPA","I02186","UN"],
-  // Pistolas Airgun G17 NBB
-  ["PISTOLA AIRGUN G17 NBB 4,5MM QGK","I02007","UN"],
-  ["PISTOLA AIRGUN G17 NBB 4,5MM - QGK + MALETA","I02190","UN"],
-  ["PISTOLA AIRGUN G17 NBB 4,5MM QGK + CASE + ESFERAS + CO2","I02007","UN"],
-  ["PISTOLA AIRGUN G17 NBB 4,5MM QGK + MALETA + ESFERAS + CO2 + ALVO","I02187","UN"],
-  ["PISTOLA AIRGUN PT92 NBB 4,5MM","I02169","UN"],
-  ["PISTOLA AIRGUN PT92 NBB 4,5MM QGK","I02169","UN"],
-  ["PISTOLA AIRGUN PT92 NBB 4,5MM QGK + CASE + ESFERAS","I02169","UN"],
-  ["PISTOLA AIRGUN PT92 NBB 4,5MM QGK + MALETA + ESFERAS + CO2 + ALVO","I02177","UN"],
-  ["PISTOLA AIRGUN PT92 FULL METAL BLACK NBB","I02002","UN"],
-  ["PISTOLA AIRGUN PT92 FULL METAL SILVER NBB","I02002","UN"],
-  ["PISTOLA AIRGUN PT92 BLACK K17 4,5MM","I02208","UN"],
-  ["PISTOLA AIRGUN SIGSAUER SP2022 4,5","I02185","UN"],
-  ["PISTOLA AIRGUN SIGSAUER SP2022 4,5 MALETA + ESFERAS","I02185","UN"],
-  ["PISTOLA AIRGUN SIGSAUER SP2022 4,5 CASE + ESFERAS + CO2 + ALVO","I02185","UN"],
-  ["PISTOLA AIRGUN SIGSAUER SP2022 4,5 + 1000 BBS","I02185","UN"],
-  ["PISTOLA AIRGUN SIGSAUER SP2022 4,5 + 2000 BBS","I02185","UN"],
-  // Pistolas Airsoft Spring diversas
-  ["PISTOLA AIRSOFT SPRING HS-B92S 6MM + BBS + MALETA","I02197","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-G19 6MM - QGK","I02167","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-G19 6MM - QGK + BBS","I02167","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-G19 6MM-QGK","I02167","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-G117 6MM - QGK","I02003","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-B92S 6MM + MALETA","I02197","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-226 6MM - QGK","I02186","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-226 6MM - QGK + BBS","I02186","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-226 6MM QGK + CAPA + BBS + ALVO","I02186","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-226 6MM QGK + CAPA + BBS + ALVO + ALVO","I02186","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-2265 6MM - QGK","I02167","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-B92 6MM + 1000 BBS","I02167","UN"],
-  ["PISTOLA AIRSOFT SPRING HS-B925 6MM","I02197","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 6MM PL","I02207","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 PL 6MM QGK + 1","I02207","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 PL 6MM QGK + 1000 BBS","I02207","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 PL 6MM QGK + 1000BBS + ALVOS","I02206","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 PL 6MM QGK + 1000BBS + ALVOS + BBS","I02206","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 SLIDE METAL 6MM","I02207","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 SLIDE METAL 6MM + 1000 BBS","I02207","UN"],
-  ["PISTOLA AIRSOFT SPRING QG17 SLIDE METAL - Calibre","I02207","UN"],
-  ["PISTOLA AIRSOFT SPRING S1911 6MM - QGK + BBS","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING S1911 6MM - QGK + BBS + MALETA","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING S-92 6MM - QGK","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING S92 6MM QGK + CASE + 1000BBS + ALVOS","I02182","UN"],
-  ["PISTOLA AIRSOFT SPRING S92 6MM + 1000 BBS - Preto","I02195","UN"],
-  ["PISTOLA AIRSOFT SPRING S92 6MM QGK","I02180","UN"],
-  ["PISTOLA AIRSOFT SPRING S226 6MM QGK + 1000","I02195","UN"],
-  ["PISTOLA AIRSOFT SPRING S226 6MM QGK + CAPA","I02195","UN"],
-  ["PISTOLA AIRSOFT SPRING SDE BK 6MM QGK","I02000","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + ALVO","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + BBS","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + 2000","I02176","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + BBS + ALVO","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK - 6 mm","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + ALVOS - 6 mm","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + BBS - 6 mm","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + BBS + BBS - Preto","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + BBS + ALVO - Preto","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + ALVOS - Preto - 6 mm","I02168","UN"],
-  ["PISTOLA AIRSOFT SPRING SP92 6MM QGK + CAPA","I02181","UN"],
-  // Pistolas Airsoft a Gás
-  ["PISTOLA DE AIRSOFT A GÁS GBB DESERT EAGLE S 6MM","I01886","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB QGK 92 A3 BK 6MM","I01823","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB GREEN GAS M1911","I01395","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB GREEN GAS M9A1","I01359","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB 92 FM BLACK 6MM - QGK","I01359","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB QGK 92 A1 6MM - QGK","I01362","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB QGK 92 A3 BK 6MM - QGK","I01362","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB GREEN GAS SEMI AUTO R18 BK BLOWBACK 6MM - WE","I01975","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS GBB QGK R30 BK V12 BLACK FULL METAL BLOWBACK 6MM","I01975","UN"],
-  ["PISTOLA DE AIRSOFT A GÁS CO2 24/7 SLIDE METAL GNB 6MM CYBERGUN","I02202","UN"],
-  ["PISTOLA DE AIRSOFT VG GK SHORT - V45 MOLA 6MM","I02208","UN"],
-  ["PISTOLA DE AIRSOFT VG GK-V500 SLIDE METAL MOLA 6MM","I02208","UN"],
-  ["PISTOLA DE AIRSOFT VG PT92 - V21 MOLA 6MM","I02202","UN"],
-  ["PISTOLA PAINTBALL G07 STORM .50 QGK","I02196","UN"],
-  ["PISTOLA PAINTBALL DE .50 QGK","I02171","UN"],
-  // Pistolas Pressão CO2
-  ["PISTOLA PRESSÃO AIRGUN CO2 PT92","I02171","UN"],
-  ["PISTOLA PRESSÃO AIRGUN CO2 PT92 NBB+ESFERAS+CO2+MALETA","I02188","UN"],
-  ["PISTOLA PRESSÃO AIRGUN CO2 PT92 NBB + ESFERAS + CO2 + MALETA","I02188","UN"],
-  ["PISTOLA PRESSÃO AIRGUN CO2 COLT 1911 NBB 4,5MM + MALETA + ALVO","I02187","UN"],
-  ["PISTOLA PRESSÃO AIRGUN CO2 COLT 1911 NBB CASE RÍGIDO + CO2 - Preto","I02178","UN"],
-  ["PISTOLA PRESSÃO AIRGUN G17 NBB 4,5MM QGK + MALETA","I02190","UN"],
-  ["PISTOLA PRESSÃO FOX BLACK 4,5MM QGK","I01374","UN"],
-  ["PISTOLA PRESSÃO VG GK SHORT - V45 MOLA 6MM","I02208","UN"],
-  ["PISTOLA DE AIRSOFT VG 1911 SHORT - V92 MOLA 6MM","I02203","UN"],
-  ["PISTOLA DE AIRSOFT VG GK-V20 GOLD METAL MOLA 6MM","I02203","UN"],
-  ["PISTOLA DE AIRSOFT VG GK-V20 SILVER METAL MOLA 6MM","I02203","UN"],
-  // PTT
-  ["PTT ELEMENT ESTILO 94 PARA RADIO MOTOROLA 1 PINO","I01385","UN"],
-  // Pistola Full Metal
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM","I02172","UN"],
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM + BBS + ALVO","I02172","UN"],
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM + ESFERAS + ALVO","I02172","UN"],
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM + 1000 BBS - Preto","I02183","UN"],
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM + QGK + ESFERAS + ALVO","I02182","UN"],
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM QGK + 1000BBS + ALVO","I02182","UN"],
-  ["PISTOLA AIRSOFT SPRING FULL METAL SP927 6MM QGK + BBS + ALVO","I02172","UN"],
-  // Pistola 1911 GBB
-  ["PISTOLA AIRSOFT 1911 R32 DT MEU DUAL TONE FULL METAL 6MM GBB - QGK","I01361","UN"],
-  ["PISTOLA AIRSOFT SLIDE CYBERGUN SIG P226 4.5MM METAL FULL SLIDE METAL","I01347","UN"],
-  // Placa / Plano
-  ["PLACA DE TRAVAMENTO DO MODO AUTOMATICO PARA RIFLE DE AIRSOFT","I01377","UN"],
-  ["PLACA SELETORA PARA GEARBOX V3 DE RIFLES DE AIRSOFT ELETRICO","I01382","UN"],
-  // Pistola PRESSÃO BEEMAN
-  ["PISTOLA PRESSÃO BEEMAN 2004 4,5MM","I02203","UN"],
-  ["PISTOLA PRESSÃO AIRGUN CO2 MALETA + CO2 - Preto","I02187","UN"],
-  ["PISTOLA PRESSÃO AIRGUN G17 NBB 4,5MM QGK + MALETA + CASE","I02187","UN"],
-  // Ponteiera
-  ["PONTEIERA LARANJA DE ROSCA DA ARMY","I01382","UN"],
-  // Pulseiras
-  ["PULSEIRA QGK COURO 1210","I01846","UN"],
-  ["PULSEIRA QGK COURO 4910","I01846","UN"],
-  ["PULSEIRA QGK COURO 5810","I01846","UN"],
-  ["PULSEIRA QGK COURO 5910","I01846","UN"],
-  ["PULSEIRA QGK COURO 6610","I01846","UN"],
-  ["PULSEIRA QGK COURO 6710","I01846","UN"],
-  ["PULSEIRA QGK COURO 7310","I01846","UN"],
-  ["PULSEIRA QGK COURO 8010","I01846","UN"],
-  ["PULSEIRA QGK COURO 8010-2","I01846","UN"],
-  ["PULSEIRA QGK COURO 9010","I01846","UN"],
-  ["PULSEIRA QGK COURO 9410","I01846","UN"],
-  ["RECARREGADOR COMPACTO DE BATERIAS LIPO - 110V/220V DA QGK PARA BATERIAS LIPO","I01389","UN"],
-  // Rifles
-  ["RIFLE AIRGUN M4 RIS CO2 4,5MM FULL METAL QGK+","I02096","UN"],
-  ["RIFLE AIRGUN M4 SPRING MR744 QGK 6MM + PACK","I02198","UN"],
-  ["RIFLE AIRGUN M4 SPRING MR744 QGK 6MM + 100BBS","I02198","UN"],
-  ["RIFLE AIRGUN M4 SPRING MR744 QGK 6MM + 200BBS","I02198","UN"],
-  ["RIFLE AIRGUN PARAFALSE 3001 CO2 4,5MM QGK + KIT","I02209","UN"],
-  ["RIFLE AIRGUN PARAFALSE 3001 CO2 4,5MM QGK","I02209","UN"],
-  ["RIFLE AIRGUN SPRING QGK M4 SP 6MM - QGK","I02168","UN"],
-  ["RIFLE AIRGUN SPRING QGK M4 SP 6MM - QGK+","I02168","UN"],
-  ["RIFLE AIRGUN SPRING OGK M4 SP 6MM - QGK","I02168","UN"],
-  ["RIFLE AIRGUN SPRING QGK M4 SP 6MM ESFERAS","I02168","UN"],
-  ["RIFLE AIRGUN SPRING QGK M4 SP 6MM ESFERAS + ALVO","I02168","UN"],
-  ["RIFLE AIRGUN SPRING SNIPER AIRGUN CO2 G6M NBB 6MM QGK","I02217","UN"],
-  ["RIFLE AIRSOFT AEG 47 ALFA QGK","I02171","UN"],
-  ["RIFLE AIRSOFT AEG 47 VICTOR TACTIAL + CAPA + BATERIA + RECARREGADOR + BBS - Preto","I02171","UN"],
-  ["RIFLE AIRSOFT AEG M4 CAPA+","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4 ECHO S-1 QGK","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4 ECHO S-2 QGK CAPA + BATERIA + RECARR + BBS - Preto","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4 FULL METAL KR5 9 6MM KWA + BATER + RECARR + BBS","I02169","UN"],
-  ["RIFLE AIRSOFT AEG M4 MIKE S-2 QGK + CAPA + BATERIA + RECARR + BBS - Tan","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4 MIKE CAPA+","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4A1 FM-02","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4A1 FM-04 6MM","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4A1 FULL METAL","I02170","UN"],
-  ["RIFLE AIRSOFT AEG M4A1 6MM QGK CHARLIE + CAPA+","I02169","UN"],
-  ["RIFLE AIRSOFT AEG M4A1 FM-02 6MM + CAPA + BATERIA + RECARREGA + BBS","I02170","UN"],
-  ["RIFLE AIRSOFT ELETRICO QGK 47 VICTOR","I01441","UN"],
-  ["RIFLE DE AIRSOFT ELETRICO QGK 47 VICTOR","I01441","UN"],
-  // Rolamento
-  ["ROLAMENTO DE 8MM PARA GEARBOX DE RIFLES DE AIRSOFT ELETRICO","I02207","UN"],
-  // Sensor
-  ["SENSOR DE TEMPERATURA DA SKYRC AIRSOFT ELETRICO","I01462","UN"],
-  // Silenciador
-  ["SILENCIADOR SL850T QGK","I02088","UN"],
-  // Slide
-  ["SLIDE PARA R27/R28/R29 SEM PINTURA ARMY","I01462","UN"],
-  // Speed loader
-  ["SPEED LOADER 4,5MM QGK","I01882","UN"],
-  ["SPEED LOADER QGK SL REVOLVER - QGK","I01822","UN"],
-  // Suporte
-  ["SUPORTE DO BOCAL DE ALIMENTAÇÃO PARA R17 ARMY","I01465","UN"],
-  ["SUPORTE DO BOCAL DE ALIMENTAÇÃO PARA R27/28/29/30/31 ARMY","I01465","UN"],
-  // Supressor
-  ["SUPRESSOR DE RUIDOS PARA CARABINAS PCP G850 QGK","I02185","UN"],
-  // Tampa
-  ["TAMPA DA BASE DO CARREGADOR CO2 L45-92-A18 QGK","I02137","UN"],
-  ["TAMPA DA BASE DO CARREGADOR CO2 L45-CAPA-A18 QGK","I02137","UN"],
-  // Transportadores
-  ["TRANSPORTADOR DE BBS A-198 PARA MAGAZINE","I02132","UN"],
-  ["TRANSPORTADOR DE BBS DO CARREGADOR L45-19-11-A10 QGK","I02138","UN"],
-  ["TRANSPORTADOR DE BBS DO CARREGADOR L45-92-A11 QGK","I02137","UN"],
-  ["TRANSPORTADOR DE BBS DO CARREGADOR L45-CAPA-A3-45 QGK","I02143","UN"],
-  ["TRANSPORTADOR DE BBS DO CARREGADOR PISTOLA SR CAPA-A3 QGK","I02143","UN"],
-  ["TRANSPORTADOR DE BBS DO CARREGADOR SR1911-A10 QGK","I02143","UN"],
-  ["TRANSPORTADOR DE BBS PARA MAGAZINE R27/R28/R29/R30","I02132","UN"],
-  // Travas
-  ["TRAVA DE SEGURANÇA DO CILINDRO REVÓLVER TITAN TI-13 QGK","I02142","UN"],
-  ["TRAVA DE SEGURANÇA DO CILINDRO REVÓLVER TITAN TI-13S QGK","I02142","UN"],
-  // Válvulas
-  ["VALVULA DE ENCHIMENTO CARABINA PCP G850 - QGK","I02182","UN"],
-  ["VALVULA DE ENTRADA DO CARREGADOR PADRÃO SR92-A4 QGK","I02153","UN"],
-  ["VALVULA DE ENTRADA ACOBB CARREGADOR APS","I02153","UN"],
-  ["VALVULA DE SAÍDA DO CARREGADOR CO2","I02136","UN"],
-];
-
-// ─── STATE ─────────────────────────────────────────────────────────────────────
-let products = [];
-let history = [];
-let editId = null;
-let scanMode = 'entrada';
-let currentScanSku = null;
-let printSelectedSkus = new Set();
-
-function loadData() {
-  const saved = localStorage.getItem('qgk_products_v2');
-  if (saved) {
-    products = JSON.parse(saved);
-  } else {
-    // Load initial from planilha, qty = 0
-    products = INITIAL_PRODUCTS.map((p, i) => ({
-      id: 'p' + Date.now() + i,
-      name: p[0],
-      sku: p[1],
-      unit: p[2] || 'UN',
-      qty: 0,
-      minAlert: 0,
-    }));
-    saveData();
-  }
-  const savedH = localStorage.getItem('qgk_history_v2');
-  history = savedH ? JSON.parse(savedH) : [];
-}
-
-function saveData() {
-  localStorage.setItem('qgk_products_v2', JSON.stringify(products));
-}
-
-function saveHistory() {
-  if (history.length > 500) history = history.slice(-500);
-  localStorage.setItem('qgk_history_v2', JSON.stringify(history));
-}
-
-function addHistory(product, delta, newQty) {
-  history.unshift({
-    ts: Date.now(),
-    name: product.name,
-    sku: product.sku,
-    delta,
-    qty: newQty,
-  });
-  saveHistory();
-}
-
-// ─── STATS ─────────────────────────────────────────────────────────────────────
-function updateStats() {
-  document.getElementById('stat-total').textContent = products.length;
-  document.getElementById('stat-items').textContent = products.reduce((a, p) => a + p.qty, 0);
-  document.getElementById('stat-zero').textContent = products.filter(p => p.qty === 0).length;
-}
-
-// ─── TABLE ─────────────────────────────────────────────────────────────────────
-function renderTable() {
-  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
-  const filtered = products.filter(p =>
-    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
-  );
-  const tbody = document.getElementById('table-body');
-  const empty = document.getElementById('table-empty');
-  if (!filtered.length) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-    return;
-  }
-  empty.style.display = 'none';
-  tbody.innerHTML = filtered.map(p => {
-    const cls = p.qty === 0 ? 'badge-zero' : p.qty <= (p.minAlert || 5) && p.minAlert > 0 ? 'badge-low' : 'badge-ok';
-    return `<tr onclick="openEditModal('${p.id}')">
-      <td class="name-cell">${esc(p.name)}</td>
-      <td class="sku-cell">${esc(p.sku)}</td>
-      <td><span class="chip chip-un">${esc(p.unit)}</span></td>
-      <td><span class="qty-badge ${cls}">${p.qty}</span></td>
-      <td class="actions-cell" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-sm" onclick="showBarcode('${p.id}')">Barcode</button>
-        <button class="btn btn-green btn-sm" onclick="quickAdj('${p.id}',1)">+1</button>
-        <button class="btn btn-red btn-sm" onclick="quickAdj('${p.id}',-1)">-1</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProduct('${p.id}')">✕</button>
-      </td>
-    </tr>`;
-  }).join('');
-  updateStats();
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function quickAdj(id, delta) {
-  const p = products.find(x => x.id === id);
-  if (!p) return;
-  const prev = p.qty;
-  p.qty = Math.max(0, p.qty + delta);
-  saveData();
-  addHistory(p, delta, p.qty);
-  renderTable();
-  toast(`${delta > 0 ? '+' : ''}${delta} → ${p.name.substring(0,30)} (${p.qty})`);
-}
-
-function deleteProduct(id) {
-  if (!confirm('Remover este produto?')) return;
-  products = products.filter(x => x.id !== id);
-  saveData();
-  renderTable();
-  renderPrintGrid();
-  toast('Produto removido.');
-}
-
-// ─── MODALS ────────────────────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-function openAddModal() {
-  editId = null;
-  document.getElementById('modal-product-title').textContent = 'Adicionar Produto';
-  document.getElementById('mp-name').value = '';
-  document.getElementById('mp-sku').value = '';
-  document.getElementById('mp-qty').value = 0;
-  openModal('modal-product');
-}
-
-function openEditModal(id) {
-  const p = products.find(x => x.id === id);
-  if (!p) return;
-  editId = id;
-  document.getElementById('modal-product-title').textContent = 'Editar Produto';
-  document.getElementById('mp-name').value = p.name;
-  document.getElementById('mp-sku').value = p.sku;
-  document.getElementById('mp-qty').value = p.qty;
-  openModal('modal-product');
-}
-
-function saveProduct() {
-  const name = document.getElementById('mp-name').value.trim();
-  const sku = document.getElementById('mp-sku').value.trim();
-  const qty = parseInt(document.getElementById('mp-qty').value) || 0;
-  if (!name || !sku) { alert('Preencha nome e SKU.'); return; }
-  if (editId) {
-    const p = products.find(x => x.id === editId);
-    if (p) { p.name = name; p.sku = sku; p.qty = qty; }
-  } else {
-    products.push({ id: 'p' + Date.now(), name, sku, unit: 'UN', qty, minAlert: 0 });
-  }
-  saveData();
-  closeModal('modal-product');
-  renderTable();
-  renderPrintGrid();
-  toast('Produto salvo!');
-}
-
-// ─── BARCODE ───────────────────────────────────────────────────────────────────
-function showBarcode(id) {
-  const p = products.find(x => x.id === id);
-  if (!p) return;
-  const div = document.getElementById('bc-content');
-  div.innerHTML = `
-    <div class="bc-wrap" id="bc-print-area">
-      <svg id="bc-svg"></svg>
-      <div class="bc-label">${esc(p.name)}</div>
-      <div class="bc-sku">${esc(p.sku)}</div>
-    </div>`;
-  openModal('modal-barcode');
-  setTimeout(() => {
-    try {
-      JsBarcode("#bc-svg", p.sku, {
-        format: "CODE128",
-        lineColor: "#000",
-        width: 2,
-        height: 60,
-        displayValue: true,
-        fontSize: 14,
-        margin: 8,
-      });
-    } catch(e) {
-      document.getElementById('bc-svg').outerHTML = `<p style="color:red">Erro ao gerar barcode: ${e.message}</p>`;
-    }
-  }, 50);
-}
-
-function printBarcode() {
-  const area = document.getElementById('bc-print-area');
-  if (!area) return;
-  const win = window.open('','_blank','width=400,height=300');
-  win.document.write(`<html><head><title>Barcode</title>
-    <style>body{margin:16px;text-align:center;font-family:sans-serif}
-    .bc-label{font-size:11px;font-weight:700;color:#222;margin-top:8px;word-break:break-all}
-    .bc-sku{font-family:monospace;font-size:12px;color:#555}</style></head>
-    <body>${area.innerHTML}<script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
-  win.document.close();
-}
-
-// ─── SCANNER ───────────────────────────────────────────────────────────────────
-function setMode(m) {
-  scanMode = m;
-  document.getElementById('mode-entrada').className = 'mode-btn' + (m==='entrada'?' active-entrada':'');
-  document.getElementById('mode-saida').className = 'mode-btn' + (m==='saida'?' active-saida':'');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const sf = document.getElementById('scan-field');
-  let debounce;
-  sf.addEventListener('input', () => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      const val = sf.value.trim();
-      if (!val) return;
-      processScan(val);
-      sf.value = '';
-    }, 120);
-  });
-  sf.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      const val = sf.value.trim();
-      if (!val) return;
-      processScan(val);
-      sf.value = '';
-    }
-  });
-});
-
-function processScan(code) {
-  const p = products.find(x => x.sku.toLowerCase() === code.toLowerCase() || x.id === code);
-  const fb = document.getElementById('scan-feedback');
-  const nf = document.getElementById('scan-notfound');
-  nf.style.display = 'none';
-
-  if (!p) {
-    fb.className = 'scan-feedback';
-    nf.style.display = 'block';
-    document.getElementById('scan-notfound-sku').textContent = code;
-    currentScanSku = null;
-    return;
-  }
-  currentScanSku = p.id;
-  document.getElementById('scan-pname').textContent = p.name;
-  document.getElementById('scan-psku').textContent = p.sku;
-  document.getElementById('scan-pqty').textContent = p.qty;
-  fb.className = 'scan-feedback ok';
-
-  // Auto-adjust
-  const delta = scanMode === 'entrada' ? 1 : -1;
-  adjustQty(delta);
-}
-
-function adjustQty(delta) {
-  if (!currentScanSku) return;
-  const p = products.find(x => x.id === currentScanSku);
-  if (!p) return;
-  p.qty = Math.max(0, p.qty + delta);
-  document.getElementById('scan-pqty').textContent = p.qty;
-  saveData();
-  addHistory(p, delta, p.qty);
-  renderTable();
-  toast(`${delta > 0 ? '+' : ''}${delta} — ${p.name.substring(0,28)} → ${p.qty}`);
-}
-
-function openSetQtyModal() {
-  if (!currentScanSku) return;
-  const p = products.find(x => x.id === currentScanSku);
-  if (!p) return;
-  document.getElementById('setqty-label').textContent = p.name;
-  document.getElementById('setqty-val').value = p.qty;
-  openModal('modal-setqty');
-}
-
-function confirmSetQty() {
-  const p = products.find(x => x.id === currentScanSku);
-  if (!p) return;
-  const newQty = parseInt(document.getElementById('setqty-val').value) || 0;
-  const delta = newQty - p.qty;
-  p.qty = Math.max(0, newQty);
-  document.getElementById('scan-pqty').textContent = p.qty;
-  saveData();
-  addHistory(p, delta, p.qty);
-  renderTable();
-  closeModal('modal-setqty');
-  toast(`Estoque definido: ${p.qty}`);
-}
-
-// ─── HISTÓRICO ─────────────────────────────────────────────────────────────────
-function renderHistory() {
-  const list = document.getElementById('history-list');
-  const empty = document.getElementById('history-empty');
-  if (!history.length) { list.innerHTML = ''; empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  list.innerHTML = history.slice(0, 100).map(h => {
-    const d = new Date(h.ts);
-    const ds = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-    const cls = h.delta >= 0 ? 'delta-pos' : 'delta-neg';
-    return `<div class="history-item">
-      <div>
-        <div class="history-name">${esc(h.name)}</div>
-        <div class="history-meta">${esc(h.sku)} · ${ds}</div>
+<!-- Zebra ZPL -->
+<div class="modal-backdrop" id="modal-zebra">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 class="modal-title">🦓 Gerar Arquivo ZPL — Zebra</h3>
+      <button class="modal-close" onclick="UI.closeModal('modal-zebra')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="zpl-info">
+        <strong id="zpl-count">0</strong> etiquetas selecionadas.
+        Baixe o <code>.zpl</code> e envie via <strong>Zebra Setup Utilities</strong>,
+        <strong>ZebraDesigner</strong> ou socket TCP porta 9100.
+        Para imprimir em outro computador, copie o arquivo <code>.zpl</code> ou <code>.txt</code> e envie à impressora.
       </div>
-      <div>
-        <div class="history-delta ${cls}">${h.delta > 0 ? '+' : ''}${h.delta}</div>
-        <div style="font-size:11px;color:var(--text-dim);text-align:right">→ ${h.qty}</div>
+      <div class="zpl-config">
+        <div class="zpl-field">
+          <label>Largura (mm)</label>
+          <input type="number" id="zpl-w" value="50" min="20" max="200">
+        </div>
+        <div class="zpl-field">
+          <label>Altura (mm)</label>
+          <input type="number" id="zpl-h" value="25" min="10" max="200">
+        </div>
+        <div class="zpl-field">
+          <label>DPI</label>
+          <select id="zpl-dpi">
+            <option value="203">203 dpi</option>
+            <option value="300" selected>300 dpi</option>
+            <option value="600">600 dpi</option>
+          </select>
+        </div>
+        <div class="zpl-field">
+          <label>Cópias</label>
+          <input type="number" id="zpl-copies" value="1" min="1" max="99">
+        </div>
+        <button class="btn btn-secondary" onclick="Print.regenerateZpl()">↻ Atualizar</button>
       </div>
-    </div>`;
-  }).join('');
-}
+      <pre id="zpl-preview" class="zpl-preview"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="UI.closeModal('modal-zebra')">Fechar</button>
+      <button class="btn btn-secondary" onclick="Print.copyZpl()">📋 Copiar ZPL</button>
+      <button class="btn btn-secondary" onclick="Print.downloadTxt()">⬇ Download .txt</button>
+      <button class="btn btn-primary"   onclick="Print.downloadZpl()">⬇ Download .zpl</button>
+    </div>
+  </div>
+</div>
 
-function clearHistory() {
-  if (!confirm('Limpar todo o histórico?')) return;
-  history = [];
-  saveHistory();
-  renderHistory();
-}
+<div id="toast" class="toast"></div>
 
-// ─── PRINT GRID ────────────────────────────────────────────────────────────────
-function renderPrintGrid() {
-  const q = (document.getElementById('print-search')?.value || '').toLowerCase();
-  const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
-  const grid = document.getElementById('print-grid');
-  grid.innerHTML = filtered.map(p => `
-    <div class="print-item">
-      <svg class="bc-svg-mini" data-sku="${esc(p.sku)}"></svg>
-      <div class="print-item-name">${esc(p.name.substring(0,50))}</div>
-    </div>`).join('');
-  // Render barcodes
-  grid.querySelectorAll('.bc-svg-mini').forEach(svg => {
-    try {
-      JsBarcode(svg, svg.dataset.sku, { format:'CODE128', width:1.2, height:35, displayValue:true, fontSize:9, margin:4, lineColor:'#000' });
-    } catch(e) {}
-  });
-}
-
-// ─── TABS ──────────────────────────────────────────────────────────────────────
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const idx = ['estoque','scanner','historico','print'].indexOf(name);
-  document.querySelectorAll('.tab')[idx].classList.add('active');
-  document.getElementById('page-' + name).classList.add('active');
-  if (name === 'historico') renderHistory();
-  if (name === 'print') renderPrintGrid();
-  if (name === 'scanner') document.getElementById('scan-field').focus();
-}
-
-// ─── EXPORT CSV ───────────────────────────────────────────────────────────────
-function exportCSV() {
-  const rows = [['Produto','SKU','Unidade','Quantidade']];
-  products.forEach(p => rows.push([`"${p.name}"`, p.sku, p.unit, p.qty]));
-  const blob = new Blob([rows.map(r => r.join(';')).join('\n')], {type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'estoque-qgk.csv';
-  a.click();
-}
-
-// ─── TOAST ─────────────────────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-}
-
-// ─── INIT ──────────────────────────────────────────────────────────────────────
-loadData();
-renderTable();
-updateStats();
-
-// Close modals on bg click
-document.querySelectorAll('.modal-bg').forEach(bg => {
-  bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
-});
-</script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/print.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
